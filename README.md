@@ -215,36 +215,36 @@ import {
   Body,
   Param,
 } from '@nestjs/common';
-import { TasksService } from './task.service';
+import { TaskService } from './task.service';
 import { Task } from './entities/task.entity';
 
 @Controller('task')
-export class TasksController {
-  constructor(private readonly tasksService: TasksService) {}
+export class TaskController {
+  constructor(private readonly taskService: TaskService) {}
 
   @Get()
   async findAll(): Promise<Task[]> {
-    return this.tasksService.findAll();
+    return this.taskService.findAll();
   }
 
   @Get(':id')
   async findOne(@Param('id') id: string): Promise<Task> {
-    return this.tasksService.findOne(id);
+    return this.taskService.findOne(id);
   }
 
   @Post()
   async create(@Body() task: Task): Promise<Task> {
-    return this.tasksService.create(task);
+    return this.taskService.create(task);
   }
 
   @Put(':id')
   async update(@Param('id') id: string, @Body() task: Task): Promise<Task> {
-    return this.tasksService.update(id, task);
+    return this.taskService.update(id, task);
   }
 
   @Delete(':id')
   async remove(@Param('id') id: string): Promise<void> {
-    return this.tasksService.remove(parseInt(id));
+    return this.taskService.remove(id);
   }
 }
 ```
