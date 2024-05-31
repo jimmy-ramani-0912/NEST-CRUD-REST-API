@@ -36,13 +36,15 @@ Navigate into your project directory before proceeding.
 > Install TypeORM and PostgreSQL
 
 ```
-npm install --save @nestjs/config @nestjs/typeorm typeorm pg
+npm install --save @nestjs/config @nestjs/typeorm typeorm pg class-validator class-transformer
 ```
 
 - _@nestjs/config_: NestJS module for configuration
 - _@nestjs/typeorm_: NestJS module for TypeORM
 - _typeorm_: ORM for NodeJS
 - _pg_: Postgres driver for NodeJS
+- _class-validator_: Allows you to use decorator-based validation for class properties.
+- _class-transformer_: Enables transforming plain objects to class instances and vice versa, essential for applying validation rules to incoming request data.
 
 > Database Connection
 
@@ -147,6 +149,10 @@ export class Task {
 }
 ```
 
+## Create a DTO (Data Transfer Object) for the Task
+
+Define a DTO class with the fields you expect in the request body and use validation decorators to enforce the rules
+
 ## Create a Task Module
 
 NestJS is modular, so you’ll organize your code into modules. For the task, you’ll create a task module, service, and controller.
@@ -166,13 +172,14 @@ nest generate controller task
 In the tasks.service.ts file, begin by importing essential dependencies: the InjectRepository decorator from @nestjs/typeorm and the Repository from typeorm. Additionally, import the Task entity that was recently created. Once imported, proceed to implement the CRUD (Create, Read, Update, Delete) operations:
 
 ```
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Task } from './entities/task.entity';
+import { CreateTaskDto } from './dto/create-task.dto';
 
 @Injectable()
-export class TasksService {
+export class TaskService {
   constructor(
     @InjectRepository(Task)
     private taskRepository: Repository<Task>,
@@ -183,20 +190,32 @@ export class TasksService {
   }
 
   async findOne(id: string): Promise<Task> {
-    return await this.taskRepository.findOne({ where: { id } });
+    const task = await this.taskRepository.findOne({ where: { id } });
+    if (!task) {
+      throw new NotFoundException(`Task with ID ${id} not found`);
+    }
+    return task;
   }
 
-  async create(task: Task): Promise<Task> {
+  async create(createTaskDto: CreateTaskDto): Promise<Task> {
+    const task = this.taskRepository.create(createTaskDto);
     return await this.taskRepository.save(task);
   }
 
-  async update(id: string, task: Task): Promise<Task> {
-    await this.taskRepository.update(id, task);
-    return await this.taskRepository.findOne({ where: { id } });
+  async update(id: string, createTaskDto: CreateTaskDto): Promise<Task> {
+    await this.taskRepository.update(id, createTaskDto);
+    const updatedTask = await this.taskRepository.findOne({ where: { id } });
+    if (!updatedTask) {
+      throw new NotFoundException(`Task with ID ${id} not found`);
+    }
+    return updatedTask;
   }
 
-  async remove(id: number): Promise<void> {
-    await this.taskRepository.delete(id);
+  async remove(id: string): Promise<void> {
+    const result = await this.taskRepository.delete(id);
+    if (result.affected === 0) {
+      throw new NotFoundException(`Task with ID ${id} not found`);
+    }
   }
 }
 ```
@@ -214,9 +233,12 @@ import {
   Delete,
   Body,
   Param,
+  UsePipes,
+  ValidationPipe,
 } from '@nestjs/common';
 import { TaskService } from './task.service';
 import { Task } from './entities/task.entity';
+import { CreateTaskDto } from './dto/create-task.dto';
 
 @Controller('task')
 export class TaskController {
@@ -233,13 +255,18 @@ export class TaskController {
   }
 
   @Post()
-  async create(@Body() task: Task): Promise<Task> {
-    return this.taskService.create(task);
+  @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
+  async create(@Body() createTaskDto: CreateTaskDto): Promise<Task> {
+    return this.taskService.create(createTaskDto);
   }
 
   @Put(':id')
-  async update(@Param('id') id: string, @Body() task: Task): Promise<Task> {
-    return this.taskService.update(id, task);
+  @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
+  async update(
+    @Param('id') id: string,
+    @Body() createTaskDto: CreateTaskDto,
+  ): Promise<Task> {
+    return this.taskService.update(id, createTaskDto);
   }
 
   @Delete(':id')
