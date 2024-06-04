@@ -1,4 +1,4 @@
-# Building Web Services with NestJS, TypeORM, and PostgreSQL
+# Building CRUD Web Services with NestJS, TypeORM, and PostgreSQL
 
 The combination of **NestJS**, **TypeORM**, and **PostgreSQL** provides a scalable, and efficient stack for developing web services. This article gives a general outline of constructing a basic, yet operational web service using these tools. We will look into the fundamentals of each element, and their collaboration, and guide you through a straightforward example to kickstart your project.
 
